@@ -4,3 +4,4 @@ numpy
 oracledb
 plotly
 matplotlib
+openpyxl
