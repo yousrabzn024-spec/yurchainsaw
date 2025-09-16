@@ -449,56 +449,54 @@ if uploaded_file is not None:
         st.warning("The required columns for salesmen performance analysis are missing.")
 
     # ----------------------------
-    # Sale Comparison (two weekly views)
+     # Sale Comparison
     # ----------------------------
     st.markdown("<h3 style='text-align: center;'>Sale Comparison</h3>", unsafe_allow_html=True)
+
+    # ---- Plot 1 ----
     st.markdown("Sales Plot 1: Select Filters")
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        year1 = st.selectbox("Year", options=df["BILL_DATE"].dt.year.unique() if "BILL_DATE" in df.columns else [], key="year1")
+        year1 = st.selectbox("Year", options=df["BILL_DATE"].dt.year.unique(), key="year1")
     with col2:
-        month1 = st.selectbox("Month", options=df["BILL_DATE"].dt.month_name().unique() if "BILL_DATE" in df.columns else [], key="month1")
+        month1 = st.selectbox("Month", options=df["BILL_DATE"].dt.month_name().unique(), key="month1")
 
-    # weeks of that month
-    if "BILL_DATE" in df.columns and month1:
+    if month1:
         month_index1 = pd.to_datetime(month1, format='%B').month
-        month_start = df[(df["BILL_DATE"].dt.year == int(year1)) & (df["BILL_DATE"].dt.month == month_index1)]
-        weeks_in_month1 = month_start['BILL_DATE'].dt.isocalendar().week.unique()
+        month_start1 = df[(df["BILL_DATE"].dt.year == int(year1)) & (df["BILL_DATE"].dt.month == month_index1)]
+        weeks_in_month1 = month_start1['BILL_DATE'].dt.isocalendar().week.unique()
     else:
         weeks_in_month1 = []
 
     with col3:
         week1 = st.selectbox("Week", options=weeks_in_month1, key="week1")
     with col4:
-        store1 = st.selectbox("Store", options=df["STORE_NAME"].unique() if "STORE_NAME" in df.columns else [], key="store1")
+        store1 = st.selectbox("Store", options=df["STORE_NAME"].unique(), key="store1")
 
-    # compute start and end date
-    if "BILL_DATE" in df.columns and len(weeks_in_month1)>0:
-        start_date1 = df[(df["BILL_DATE"].dt.year == int(year1)) & (df["BILL_DATE"].dt.isocalendar().week == int(week1))]["BILL_DATE"].min()
-        end_date1 = start_date1 + pd.DateOffset(days=6)
-    else:
-        start_date1 = None
-        end_date1 = None
+    start_date1 = df[(df["BILL_DATE"].dt.year == int(year1)) & (df["BILL_DATE"].dt.isocalendar().week == int(week1))]["BILL_DATE"].min()
+    end_date1 = start_date1 + pd.DateOffset(days=6) if start_date1 is not None else None
 
     filtered_data1 = df.copy()
-    if start_date1 is not None and end_date1 is not None and "STORE_NAME" in df.columns:
+    if start_date1 is not None and end_date1 is not None:
         filtered_data1 = df[(df["BILL_DATE"] >= start_date1) & (df["BILL_DATE"] <= end_date1) & (df["STORE_NAME"] == store1)]
 
     sales_by_day1 = pd.DataFrame()
-    if not filtered_data1.empty and "BILL_DATE" in filtered_data1.columns:
+    if not filtered_data1.empty:
         sales_by_day1 = filtered_data1.groupby(filtered_data1["BILL_DATE"].dt.date)["NET_TOTAL"].sum().reset_index()
         sales_by_day1['Day'] = pd.to_datetime(sales_by_day1['BILL_DATE']).dt.day_name()
         sales_by_day1['Day_BillDate'] = sales_by_day1['Day'] + ' (' + sales_by_day1['BILL_DATE'].astype(str) + ')'
 
+    # ---- Plot 2 ----
     st.markdown("Sales Plot 2: Select Filters")
     col5, col6, col7, col8 = st.columns(4)
-    with col5:
-        year2 = st.selectbox("Year", options=df["BILL_DATE"].dt.year.unique() if "BILL_DATE" in df.columns else [], key="year2")
-    with col6:
-        month2 = st.selectbox("Month", options=df["BILL_DATE"].dt.month_name().unique() if "BILL_DATE" in df.columns else [], key="month2")
 
-    if "BILL_DATE" in df.columns and month2:
+    with col5:
+        year2 = st.selectbox("Year", options=df["BILL_DATE"].dt.year.unique(), key="year2")
+    with col6:
+        month2 = st.selectbox("Month", options=df["BILL_DATE"].dt.month_name().unique(), key="month2")
+
+    if month2:
         month_index2 = pd.to_datetime(month2, format='%B').month
         month_start2 = df[(df["BILL_DATE"].dt.year == int(year2)) & (df["BILL_DATE"].dt.month == month_index2)]
         weeks_in_month2 = month_start2['BILL_DATE'].dt.isocalendar().week.unique()
@@ -530,15 +528,19 @@ if uploaded_file is not None:
     left_column, right_column = st.columns(2)
     with left_column:
         if not sales_by_day1.empty:
-            fig_sales1 = px.bar(sales_by_day1, x="Day_BillDate", y="NET_TOTAL", title=f"Total Sales by Day for {month1} {year1} (Week {week1})", color="NET_TOTAL", color_continuous_scale=px.colors.sequential.Viridis)
-            st.plotly_chart(fig_sales1, use_container_width=True)
+            fig_sales1 = px.bar(sales_by_day1, x="Day_BillDate", y="NET_TOTAL",
+                                title=f"Total Sales by Day for {month1} {year1} (Week {week1})",
+                                color="NET_TOTAL", color_continuous_scale=px.colors.sequential.Viridis)
+            st.plotly_chart(fig_sales1, use_container_width=True, key="sales_plot1")
         else:
             st.info("No data for Plot 1 selection.")
 
     with right_column:
         if not sales_by_day2.empty:
-            fig_sales2 = px.bar(sales_by_day2, x="Day_BillDate", y="NET_TOTAL", title=f"Total Sales by Day for {month2} {year2} (Week {week2})", color="NET_TOTAL", color_continuous_scale=px.colors.sequential.Viridis)
-            st.plotly_chart(fig_sales2, use_container_width=True)
+            fig_sales2 = px.bar(sales_by_day2, x="Day_BillDate", y="NET_TOTAL",
+                                title=f"Total Sales by Day for {month2} {year2} (Week {week2})",
+                                color="NET_TOTAL", color_continuous_scale=px.colors.sequential.Viridis)
+            st.plotly_chart(fig_sales2, use_container_width=True, key="sales_plot2")
         else:
             st.info("No data for Plot 2 selection.")
 
@@ -547,119 +549,79 @@ if uploaded_file is not None:
     # ----------------------------
     st.markdown("<h3 style='text-align: center;'> Best & Worst Selling Model </h3>", unsafe_allow_html=True)
     if "HR1" in df.columns and "MODEL_CODE" in df.columns and "QTY" in df.columns:
-        selected_hr1 = st.selectbox("Select HR1 Type:", options=df["HR1"].unique())
-        filtered_hr1_data = df_selection[df_selection["HR1"] == selected_hr1]
+        selected_hr1 = st.selectbox("Select HR1 Type:", options=df["HR1"].unique(), key="hr1_select")
+        filtered_hr1_data = df[df["HR1"] == selected_hr1]
         if not filtered_hr1_data.empty:
             model_sales = filtered_hr1_data.groupby("MODEL_CODE")["QTY"].sum().reset_index()
             top_models = model_sales.nlargest(10, "QTY")
             bottom_models = model_sales.nsmallest(10, "QTY")
 
-            fig_top = px.pie(top_models, values='QTY', names='MODEL_CODE', title='Top 10 Best Selling Models', hole=0.4)
-            fig_bottom = px.pie(bottom_models, values='QTY', names='MODEL_CODE', title='Top 10 Worst Selling Models', hole=0.4)
+            fig_top = px.pie(top_models, values='QTY', names='MODEL_CODE',
+                             title='Top 10 Best Selling Models', hole=0.4)
+            fig_bottom = px.pie(bottom_models, values='QTY', names='MODEL_CODE',
+                                title='Top 10 Worst Selling Models', hole=0.4)
 
             col3, col4 = st.columns(2)
             with col3:
                 st.markdown("### Top 10 Best Selling Models Table")
-                st.dataframe(top_models)
+                st.dataframe(top_models, key="top_models_table")
             with col4:
                 st.markdown("### Top 10 Worst Selling Models Table")
-                st.dataframe(bottom_models)
+                st.dataframe(bottom_models, key="bottom_models_table")
 
             col1b, col2b = st.columns(2)
             with col1b:
-                st.plotly_chart(fig_top, use_container_width=True)
+                st.plotly_chart(fig_top, use_container_width=True, key="best_models_chart")
             with col2b:
-                st.plotly_chart(fig_bottom, use_container_width=True)
+                st.plotly_chart(fig_bottom, use_container_width=True, key="worst_models_chart")
         else:
             st.info("No data for the selected HR1.")
     else:
         st.info("Model analysis requires HR1, MODEL_CODE and QTY columns.")
 
     # ----------------------------
-    # NEW: % of sold colors for selected MODEL_CODE
+    # % of sold colors for selected MODEL_CODE
     # ----------------------------
     st.markdown("### Color Distribution by Model")
-    if "MODEL_CODE" in df_selection.columns and "COLOR_NAME" in df_selection.columns and ("QTY" in df_selection.columns or "NET_TOTAL" in df_selection.columns):
-        model_list = df_selection["MODEL_CODE"].dropna().unique()
-        selected_model = st.selectbox("Select Model Code:", options=model_list)
+    if "MODEL_CODE" in df.columns and "COLOR_NAME" in df.columns and ("QTY" in df.columns or "NET_TOTAL" in df.columns):
+        model_list = df["MODEL_CODE"].dropna().unique()
+        selected_model = st.selectbox("Select Model Code:", options=model_list, key="model_select")
         if selected_model:
-            # use QTY when available, otherwise NET_TOTAL
-            metric_col = "QTY" if "QTY" in df_selection.columns and df_selection["QTY"].sum() > 0 else "NET_TOTAL"
-            color_dist = df_selection[df_selection["MODEL_CODE"] == selected_model].groupby("COLOR_NAME")[metric_col].sum().reset_index().sort_values(metric_col, ascending=False)
+            metric_col = "QTY" if "QTY" in df.columns and df["QTY"].sum() > 0 else "NET_TOTAL"
+            color_dist = df[df["MODEL_CODE"] == selected_model].groupby("COLOR_NAME")[metric_col].sum().reset_index().sort_values(metric_col, ascending=False)
             if not color_dist.empty:
                 color_dist["pct"] = (color_dist[metric_col] / color_dist[metric_col].sum()) * 100
-                fig_color = px.pie(color_dist, names="COLOR_NAME", values=metric_col, title=f"Color share for model {selected_model}", hole=0.4)
-                st.plotly_chart(fig_color, use_container_width=True)
-                st.dataframe(color_dist.rename(columns={metric_col: "value", "pct": "percentage"}))
+                fig_color = px.pie(color_dist, names="COLOR_NAME", values=metric_col,
+                                   title=f"Color share for model {selected_model}", hole=0.4)
+                st.plotly_chart(fig_color, use_container_width=True, key="color_distribution_chart")
+                st.dataframe(color_dist.rename(columns={metric_col: "value", "pct": "percentage"}), key="color_distribution_table")
             else:
                 st.info("No color data for this model.")
     else:
         st.info("Color analysis requires MODEL_CODE and COLOR_NAME columns plus QTY or NET_TOTAL.")
 
     # ----------------------------
-    # NEW: Season where each model sells the most
+    # Season where each model sells the most
     # ----------------------------
     st.markdown("### Top Season per Model")
-    if "MODEL_CODE" in df_selection.columns and "SEASON" in df_selection.columns and "NET_TOTAL" in df_selection.columns:
-        model_season = df_selection.groupby(["MODEL_CODE", "SEASON"])["NET_TOTAL"].sum().reset_index()
-        # find season with max sales per model
+    if "MODEL_CODE" in df.columns and "SEASON" in df.columns and "NET_TOTAL" in df.columns:
+        model_season = df.groupby(["MODEL_CODE", "SEASON"])["NET_TOTAL"].sum().reset_index()
         idx = model_season.groupby("MODEL_CODE")["NET_TOTAL"].idxmax()
         top_season_per_model = model_season.loc[idx].reset_index(drop=True).sort_values("NET_TOTAL", ascending=False)
         top_season_per_model = top_season_per_model.rename(columns={"NET_TOTAL": "TOTAL_SALES"})
-        st.dataframe(top_season_per_model.head(200))  # show top 200 to keep UI responsive
+        st.dataframe(top_season_per_model.head(200), key="season_per_model_table")
     else:
         st.info("Season-by-model analysis requires MODEL_CODE, SEASON and NET_TOTAL columns.")
 
     # ----------------------------
-    # NEW: Sales per Season (global)
+    # Sales per Season (global)
     # ----------------------------
     st.markdown("### Sales by Season (global)")
-    if "SEASON" in df_selection.columns and "NET_TOTAL" in df_selection.columns:
-        season_sales = df_selection.groupby("SEASON")["NET_TOTAL"].sum().reset_index().sort_values("NET_TOTAL", ascending=False)
+    if "SEASON" in df.columns and "NET_TOTAL" in df.columns:
+        season_sales = df.groupby("SEASON")["NET_TOTAL"].sum().reset_index().sort_values("NET_TOTAL", ascending=False)
         fig_season_bar = px.bar(season_sales, x="SEASON", y="NET_TOTAL", title="Sales by Season (amount)", text="NET_TOTAL")
-        st.plotly_chart(fig_season_bar, use_container_width=True)
+        st.plotly_chart(fig_season_bar, use_container_width=True, key="season_sales_chart")
     else:
         st.info("Seasonal sales require SEASON and NET_TOTAL columns.")
-
-    # ----------------------------
-    # NEW: Top 5 models to promote per season (recommendation)
-    # ----------------------------
-    st.markdown("### Recommended Top Models per Season (Top 5)")
-    if "SEASON" in df_selection.columns and "MODEL_CODE" in df_selection.columns and "NET_TOTAL" in df_selection.columns:
-        season_model = df_selection.groupby(["SEASON", "MODEL_CODE", "CATEGORY"])["NET_TOTAL"].sum().reset_index()
-        seasons = season_model["SEASON"].dropna().unique()
-        chosen = st.selectbox("Choose season to see recommendations:", options=seasons)
-        if chosen:
-            top5 = season_model[season_model["SEASON"] == chosen].sort_values("NET_TOTAL", ascending=False).head(5).reset_index(drop=True)
-            st.markdown(f"Top 5 recommended models to focus on for **{chosen}** (by sales amount)")
-            st.table(top5[["MODEL_CODE", "CATEGORY", "NET_TOTAL"]].assign(Rank=range(1, len(top5)+1)).set_index("Rank"))
-            # small bar chart
-            fig_top5 = px.bar(top5, x="MODEL_CODE", y="NET_TOTAL", color="CATEGORY", title=f"Top 5 Models for {chosen}")
-            st.plotly_chart(fig_top5, use_container_width=True)
-            # Practical suggestion text
-            st.info(f"Suggestion: prioritize stock/visual merchandising for these models in {chosen} season and consider cross-selling with related categories.")
-    else:
-        st.info("Recommendation requires SEASON, MODEL_CODE and NET_TOTAL columns.")
-
-    # ----------------------------
-    # NEW: For each store, which terminal sells best
-    # ----------------------------
-    st.markdown("### Best Terminal per Store")
-    if "STORE_NAME" in df_selection.columns and "TERMINAL" in df_selection.columns and "NET_TOTAL" in df_selection.columns:
-        store_terminal = df_selection.groupby(["STORE_NAME", "TERMINAL"])["NET_TOTAL"].sum().reset_index()
-        # find top terminal per store
-        idx_term = store_terminal.groupby("STORE_NAME")["NET_TOTAL"].idxmax()
-        best_terminal_per_store = store_terminal.loc[idx_term].reset_index(drop=True).sort_values(["STORE_NAME"])
-        st.dataframe(best_terminal_per_store.rename(columns={"NET_TOTAL": "TOTAL_SALES"}))
-        # allow selection of a store to visualize terminals breakdown
-        st.markdown("Terminal breakdown for a selected store")
-        store_for_term = st.selectbox("Choose store to see terminal breakdown:", options=best_terminal_per_store["STORE_NAME"].unique())
-        if store_for_term:
-            breakdown = store_terminal[store_terminal["STORE_NAME"] == store_for_term].sort_values("NET_TOTAL", ascending=False)
-            fig_term = px.bar(breakdown, x="TERMINAL", y="NET_TOTAL", title=f"Terminal Sales in {store_for_term}", text="NET_TOTAL")
-            st.plotly_chart(fig_term, use_container_width=True)
-    else:
-        st.info("Terminal analysis requires STORE_NAME, TERMINAL and NET_TOTAL columns.")
-
 else:
     st.warning("Please upload a CSV or Excel file.")
